@@ -1,0 +1,14 @@
+# Decisiones iniciales
+- Equipo: Luilton y Yerferson Rosario Peña. No se inventan datos de Luilton.
+- Entrega solo alquileres de Apartamento y Casa. Venta conserva compatibilidad en SQL pero API la rechaza.
+- Azure SQL Database, .NET 10, EF Core SqlServer. Sin EnsureCreated ni migraciones automaticas.
+- El script es reconstruido desde el prompt, no el original validado en SSMS.
+- Las 26 entidades usan nombres originales plurales para evitar renombrados en el primer paquete.
+- DTO records, clases EF mutables y primary constructors en servicios/controladores/DbContext.
+- Auth JWT local de 30 minutos, PasswordHasher. Refresh, recuperacion, correo verificado y politica de contraseñas avanzada pendientes.
+- Cedula: solo formato de 11 digitos. No se afirma identidad real. Comprador queda sin verificar.
+- Notificaciones iniciales de registro y triggers originales pendientes; decisiones administrativas si notifican en transaccion.
+- Sin SQL ni cobros reales ejecutados desde este paquete. No hay pasarela ni tarjetas.
+- Middleware limita peticiones por IP de conexion. Revisar proxy/forwarded headers al desplegar.
+- Login devuelve 401 para credenciales invalidas. Errores inesperados no exponen SQL ni secretos.
+- No se configura retry automatico EF: las transacciones explicitas no deben reintentarse de forma ingenua.

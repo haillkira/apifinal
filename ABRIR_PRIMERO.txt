@@ -1,0 +1,8 @@
+1. Extrae TODO el ZIP en una carpeta nueva. No mezcles con Biblioteca/ChatRealtime ni sobrescribas proyectos anteriores.
+2. Abre Inmobiliaria_Progm4 en VS Code: debe verse Inmobiliaria.sln en la raiz.
+3. Terminal: dotnet build
+4. Terminal: dotnet run --project .\api\Inmobiliaria.Checks
+5. Terminal: dotnet run --project .\api\Inmobiliaria.Api
+6. Abre http://localhost:5180/health
+7. Lee README.md para Azure. No necesitas connection string para compilar.
+Esta es la BASE INICIAL, no el producto final ni un APK. No ejecutar SQL sin revisar. No contiene secretos ni credenciales predefinidas.
