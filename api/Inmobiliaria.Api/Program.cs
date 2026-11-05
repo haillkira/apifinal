@@ -7,6 +7,7 @@ using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
 using System.Threading.RateLimiting;
+using Scalar.AspNetCore;
 
 var builder=WebApplication.CreateBuilder(args);
 builder.Services.AddControllers();
@@ -20,9 +21,15 @@ if(!builder.Environment.IsDevelopment() && (string.IsNullOrWhiteSpace(cs) || str
 var validationKey=string.IsNullOrWhiteSpace(key)?Convert.ToBase64String(System.Security.Cryptography.RandomNumberGenerator.GetBytes(48)):key;
 builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme).AddJwtBearer(o=>o.TokenValidationParameters=new TokenValidationParameters{ValidateIssuer=true,ValidateAudience=true,ValidateLifetime=true,ValidateIssuerSigningKey=true,ValidIssuer=builder.Configuration["Jwt:Issuer"],ValidAudience=builder.Configuration["Jwt:Audience"],IssuerSigningKey=new SymmetricSecurityKey(Encoding.UTF8.GetBytes(validationKey)),ClockSkew=TimeSpan.FromSeconds(30)});
 builder.Services.AddAuthorization();
-builder.Services.AddRateLimiter(o=>{o.RejectionStatusCode=429;o.GlobalLimiter=PartitionedRateLimiter.Create<HttpContext,string>(ctx=>RateLimitPartition.GetFixedWindowLimiter(ctx.Connection.RemoteIpAddress?.ToString() ?? "unknown",_=>new FixedWindowRateLimiterOptions{PermitLimit=60,Window=TimeSpan.FromMinutes(1),QueueLimit=0}));}); 
+builder.Services.AddRateLimiter(o=>{o.RejectionStatusCode=429;o.GlobalLimiter=PartitionedRateLimiter.Create<HttpContext,string>(ctx=>RateLimitPartition.GetFixedWindowLimiter(ctx.Connection.RemoteIpAddress?.ToString() ?? "unknown",_=>new FixedWindowRateLimiterOptions{PermitLimit=60,Window=TimeSpan.FromMinutes(1),QueueLimit=0}));});
+builder.Services.AddOpenApi();
 var app=builder.Build();
-if(args.Contains("--bootstrap-admin"))
+if (app.Environment.IsDevelopment())
+{
+    app.MapOpenApi();
+    app.MapScalarApiReference();
+}
+if (args.Contains("--bootstrap-admin"))
 {
     if(string.IsNullOrWhiteSpace(cs))throw new InvalidOperationException("Configura InmobiliariaConnection.");
     using var scope=app.Services.CreateScope();var db=scope.ServiceProvider.GetRequiredService<InmobiliariaDbContext>();
