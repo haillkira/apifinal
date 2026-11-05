@@ -1,0 +1,81 @@
+﻿@page "/registro/{Tipo}"
+@using Inmobiliaria.Contracts
+@using Inmobiliaria.Web.Models
+@using Inmobiliaria.Web.Services
+@inject InmobiliariaApi Api
+
+<PageTitle>Registro</PageTitle>
+
+@if (Tipo is not ("comprador" or "vendedor"))
+{
+    <div class="alert alert-warning">Tipo de registro no válido.</div>
+}
+else if (exito)
+{
+    <div class="alert alert-success">
+        @if (EsVendedor)
+        {
+            <p>Tu cuenta de vendedor fue creada y está <strong>pendiente de aprobación</strong> por un administrador. Podrás publicar propiedades cuando la aprueben.</p>
+        }
+        else
+        {
+            <p>Tu cuenta fue creada correctamente.</p>
+        }
+        <a href="login">Ir a iniciar sesión</a>
+    </div>
+}
+else
+{
+    <h1>@(EsVendedor ? "Registro de vendedor" : "Registro de comprador")</h1>
+
+    <div class="col-md-6">
+        <EditForm Model="modelo" OnValidSubmit="Registrar">
+            <DataAnnotationsValidator />
+            <ValidationSummary />
+
+            @if (error is not null)
+            {
+                <div class="alert alert-danger">@error</div>
+            }
+
+            <div class="mb-3"><label class="form-label">Nombre</label>
+                <InputText class="form-control" @bind-Value="modelo.Nombre" /></div>
+            <div class="mb-3"><label class="form-label">Apellido</label>
+                <InputText class="form-control" @bind-Value="modelo.Apellido" /></div>
+            <div class="mb-3"><label class="form-label">Correo</label>
+                <InputText class="form-control" @bind-Value="modelo.Correo" /></div>
+            <div class="mb-3"><label class="form-label">Contraseña (mínimo 12 caracteres)</label>
+                <InputText type="password" class="form-control" @bind-Value="modelo.Password" /></div>
+            <div class="mb-3"><label class="form-label">Teléfono</label>
+                <InputText class="form-control" @bind-Value="modelo.Telefono" /></div>
+            <div class="mb-3"><label class="form-label">Cédula (11 dígitos)</label>
+                <InputText class="form-control" @bind-Value="modelo.Cedula" /></div>
+
+            <button class="btn btn-primary" disabled="@enviando">Registrarme</button>
+        </EditForm>
+    </div>
+}
+
+@code {
+    [Parameter] public string Tipo { get; set; } = "";
+
+    private RegistroModelo modelo = new();
+    private string? error;
+    private bool enviando;
+    private bool exito;
+
+    private bool EsVendedor => Tipo == "vendedor";
+
+    private async Task Registrar()
+    {
+        enviando = true;
+        error = null;
+
+        var req = new RegistroRequest(modelo.Nombre, modelo.Apellido, modelo.Correo,
+                                      modelo.Password, modelo.Telefono, modelo.Cedula);
+        error = await Api.RegistrarAsync(EsVendedor ? "vendedores" : "compradores", req);
+
+        enviando = false;
+        exito = error is null;
+    }
+}

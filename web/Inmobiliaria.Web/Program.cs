@@ -7,6 +7,7 @@ var builder = WebApplication.CreateBuilder(args);
 builder.Services.AddRazorComponents()
     .AddInteractiveServerComponents();
 
+builder.Services.AddScoped<SesionUsuario>();
 builder.Services.AddHttpClient<InmobiliariaApi>(c =>
     c.BaseAddress = new Uri(builder.Configuration["ApiBaseUrl"]!));
 

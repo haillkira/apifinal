@@ -1,0 +1,55 @@
+﻿@page "/login"
+@using Inmobiliaria.Web.Models
+@using Inmobiliaria.Web.Services
+@inject InmobiliariaApi Api
+@inject SesionUsuario Sesion
+@inject NavigationManager Nav
+
+<PageTitle>Iniciar sesión</PageTitle>
+
+<h1>Iniciar sesión</h1>
+
+<div class="col-md-5">
+    <EditForm Model="modelo" OnValidSubmit="Entrar">
+        <DataAnnotationsValidator />
+        <ValidationSummary />
+
+        @if (error is not null)
+        {
+            <div class="alert alert-danger">@error</div>
+        }
+
+        <div class="mb-3">
+            <label class="form-label">Correo</label>
+            <InputText class="form-control" @bind-Value="modelo.Correo" />
+        </div>
+        <div class="mb-3">
+            <label class="form-label">Contraseña</label>
+            <InputText type="password" class="form-control" @bind-Value="modelo.Password" />
+        </div>
+        <button class="btn btn-primary" disabled="@enviando">Entrar</button>
+    </EditForm>
+</div>
+
+@code {
+    private LoginModelo modelo = new();
+    private string? error;
+    private bool enviando;
+
+    private async Task Entrar()
+    {
+        enviando = true;
+        error = null;
+        var (datos, mensaje) = await Api.LoginAsync(modelo.Correo, modelo.Password);
+        enviando = false;
+
+        if (datos is null)
+        {
+            error = mensaje;
+            return;
+        }
+
+        Sesion.Iniciar(datos);
+        Nav.NavigateTo("/");
+    }
+}
