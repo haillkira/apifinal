@@ -1,0 +1,60 @@
+﻿@page "/publicaciones"
+@using Inmobiliaria.Web.Models
+@using Inmobiliaria.Web.Services
+@inject InmobiliariaApi Api
+
+<PageTitle>Propiedades en alquiler</PageTitle>
+
+<h1>Propiedades en alquiler</h1>
+
+@if (error is not null)
+{
+    <div class="alert alert-danger">@error</div>
+}
+else if (items is null)
+{
+    <p>Cargando...</p>
+}
+else if (items.Count == 0)
+{
+    <p>Todavía no hay propiedades publicadas.</p>
+}
+else
+{
+    <div class="row">
+        @foreach (var p in items)
+        {
+            <div class="col-md-4 mb-3">
+                <div class="card h-100">
+                    <div class="card-body">
+                        <h5 class="card-title">@p.Titulo</h5>
+                        <p class="card-text text-muted">@p.Sector, @p.Ciudad</p>
+                        <p class="card-text">@p.Habitaciones hab. · @p.Banos baños</p>
+                        <p class="fs-5 fw-bold">@p.Moneda @p.Precio.ToString("N2") / mes</p>
+                        @if (p.Deposito is not null)
+                        {
+                            <p class="card-text small">Depósito: @p.Moneda @p.Deposito.Value.ToString("N2")</p>
+                        }
+                    </div>
+                </div>
+            </div>
+        }
+    </div>
+}
+
+@code {
+    private List<PublicacionResumen>? items;
+    private string? error;
+
+    protected override async Task OnInitializedAsync()
+    {
+        try
+        {
+            items = await Api.GetPublicacionesAsync();
+        }
+        catch (HttpRequestException)
+        {
+            error = "No se pudo conectar con la API. ¿Está corriendo?";
+        }
+    }
+}
