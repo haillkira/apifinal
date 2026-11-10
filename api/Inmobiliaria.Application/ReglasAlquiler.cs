@@ -1,4 +1,4 @@
-namespace Inmobiliaria.Api.Services;
+namespace Inmobiliaria.Application;
 public static class ReglasAlquiler
 {
     public static bool TipoPermitido(string tipo) => tipo is "Apartamento" or "Casa";

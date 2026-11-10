@@ -1,7 +1,7 @@
 using System.ComponentModel.DataAnnotations;
 using System.ComponentModel.DataAnnotations.Schema;
 
-namespace Inmobiliaria.Api.Entities;
+namespace Inmobiliaria.Data.Entities;
 
 [Table("Roles")]
 public sealed class Roles
