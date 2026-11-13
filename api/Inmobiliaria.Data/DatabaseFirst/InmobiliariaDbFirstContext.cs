@@ -250,8 +250,8 @@ public partial class InmobiliariaDbFirstContext : DbContext
             entity.Property(e => e.TextoAlternativo).HasMaxLength(300);
             entity.Property(e => e.UrlImagen).HasMaxLength(1000);
 
-            entity.HasOne(d => d.IdPropiedadNavigation).WithOne(p => p.ImagenesPropiedades)
-                .HasForeignKey<ImagenesPropiedades>(d => d.IdPropiedad)
+            entity.HasOne(d => d.IdPropiedadNavigation).WithMany(p => p.ImagenesPropiedades)
+                .HasForeignKey(d => d.IdPropiedad)
                 .OnDelete(DeleteBehavior.ClientSetNull)
                 .HasConstraintName("FK_ImagenesPropiedades_IdPropiedad");
         });

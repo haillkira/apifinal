@@ -61,6 +61,7 @@ public sealed class InmueblesController(
         {
             "NO_ENCONTRADA" => NotFound(respuesta),
             "CON_PUBLICACIONES" => Conflict(respuesta),
+            "COMPROMISOS_ACTIVOS" => Conflict(respuesta),
             _ => BadRequest(respuesta)
         };
     }

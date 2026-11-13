@@ -1,0 +1,37 @@
+@page "/archivo"
+@using Inmobiliaria.Contracts
+@using Inmobiliaria.Web.Services
+@inject InmobiliariaApi Api
+@inject SesionUsuario Sesion
+<h1>Administrar propiedades y publicaciones</h1>
+@if (mensaje is not null) { <p role="status" class="alert alert-info">@mensaje</p> }
+@if (Sesion.Usuario?.Rol != "Vendedor") { <p>Inicia sesión como vendedor.</p> }
+else {
+<button class="btn btn-outline-primary" @onclick="Cargar" disabled="@ocupado">Actualizar</button>
+<h2>Propiedades activas</h2>
+@foreach(var p in activas) { <div class="card card-body mb-2">@p.Titulo <button disabled="@ocupado" class="btn btn-outline-danger" @onclick="() => confirmar = p.IdPropiedad">Archivar propiedad</button>
+@if(confirmar == p.IdPropiedad) { <p>Se ocultará la propiedad y se retirarán sus publicaciones. Se conserva el historial.</p><button disabled="@ocupado" @onclick='() => Cambiar(HttpMethod.Delete, $"propiedades/{p.IdPropiedad}")'>Confirmar archivado</button><button @onclick="() => confirmar = 0">Cancelar</button> }</div> }
+<h2>Propiedades archivadas</h2>
+@foreach(var p in archivadas) { <div class="card card-body mb-2">@p.Titulo <button disabled="@ocupado" @onclick='() => Cambiar(HttpMethod.Post, $"propiedades/{p.IdPropiedad}/restaurar")'>Restaurar propiedad</button></div> }
+<p>Restaurar no reactiva las publicaciones automáticamente.</p>
+<h2>Mis publicaciones</h2>
+@foreach(var p in publicaciones) { <div class="card card-body mb-2">@p.Titulo · @p.Estado
+@if(p.Estado == "Publicada") { <button disabled="@ocupado" @onclick='() => Cambiar(HttpMethod.Post, $"publicaciones/{p.IdPublicacion}/retirar")'>Retirar publicación</button> }
+@if(p.Estado == "Pausada") { <button disabled="@ocupado" @onclick='() => Cambiar(HttpMethod.Post, $"publicaciones/{p.IdPublicacion}/reactivar")'>Volver a publicar</button> }</div> }
+}
+@code {
+List<PropiedadDto> activas = [], archivadas = [];
+List<PublicacionGestionDto> publicaciones = [];
+string? mensaje; bool ocupado; int confirmar;
+protected override Task OnInitializedAsync() => Cargar();
+async Task Cargar() {
+ if(Sesion.Usuario?.Rol != "Vendedor") return;
+ ocupado = true;
+ try { activas = await Api.Consultar<List<PropiedadDto>>("api/v1/propiedades", Sesion.Token); archivadas = await Api.Consultar<List<PropiedadDto>>("api/v1/propiedades/archivadas", Sesion.Token); publicaciones = await Api.Consultar<List<PublicacionGestionDto>>("api/v1/publicaciones/mias", Sesion.Token); }
+ catch(HttpRequestException ex) { mensaje = ex.Message; } finally { ocupado = false; }
+}
+async Task Cambiar(HttpMethod metodo, string ruta) {
+ if(ocupado || Sesion.Token is null) return; ocupado = true;
+ mensaje = await Api.Enviar(metodo, "api/v1/" + ruta, null, Sesion.Token) ?? "Cambio guardado."; confirmar = 0; await Cargar();
+}
+}

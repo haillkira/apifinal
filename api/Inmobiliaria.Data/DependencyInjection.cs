@@ -13,7 +13,11 @@ public static class DependencyInjection
     {
         servicios.AddDbContext<ContextoDatos>(opciones => opciones.UseSqlServer(cadena));
         servicios.AddScoped<IPropiedadRepository, PropiedadRepository>();
+        servicios.AddScoped<IArchivoRepository, PropiedadRepository>();
         servicios.AddScoped<ICuentasRepository, CuentasRepository>();
+        servicios.AddScoped<ISolicitudesRepository, SolicitudesRepository>();
+        servicios.AddScoped<IVisitasRepository, VisitasRepository>();
+        servicios.AddScoped<IImagenesRepository, ImagenesRepository>();
         return servicios;
     }
 }

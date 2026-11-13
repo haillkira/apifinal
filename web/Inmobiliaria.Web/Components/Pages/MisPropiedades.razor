@@ -1,0 +1,125 @@
+@page "/mis-propiedades"
+@rendermode InteractiveServer
+@using Inmobiliaria.Contracts
+@using Inmobiliaria.Web.Services
+@inject SesionUsuario Sesion
+@inject InmobiliariaApi Api
+@implements IDisposable
+
+<PageTitle>Mis propiedades | Inmobiliaria</PageTitle>
+
+<h1>Mis propiedades</h1>
+<a class="btn btn-outline-secondary mb-3" href="/archivo">Retirar publicaciones y archivar propiedades</a>
+
+@if (!Sesion.EstaAutenticado)
+{
+    <div class="alert alert-warning" role="alert">
+        Inicia sesión para acceder al panel de propiedades.
+    </div>
+    <a class="btn btn-primary" href="/login">Ir a iniciar sesión</a>
+}
+else
+{
+    <p class="lead">Propiedades asociadas a tu cuenta.</p>
+    @if (Sesion.Usuario?.Rol == "Vendedor" && error is null && propiedades is not null)
+    {
+        <a href="/propiedades/nueva" class="btn btn-primary mb-3">Crear propiedad</a>
+    }
+    <button class="btn btn-outline-primary mb-3" disabled="@cargando" @onclick="Cargar">Actualizar listado</button>
+
+    @if (cargando)
+    {
+        <p role="status">Cargando propiedades...</p>
+    }
+    else if (error is not null)
+    {
+        <div class="alert alert-danger" role="alert">@error</div>
+    }
+    else if (propiedades is { Count: 0 })
+    {
+        <div class="alert alert-info">Todavía no tienes propiedades registradas.</div>
+    }
+    else if (propiedades is not null)
+    {
+        <div class="table-responsive">
+            <table class="table table-striped">
+                <thead><tr><th>ID</th><th>Título</th><th>Ciudad</th><th>Sector</th><th>Acciones</th></tr></thead>
+                <tbody>
+                    @foreach (var propiedad in propiedades)
+                    {
+                        <tr>
+                            <td>@propiedad.IdPropiedad</td>
+                            <td>@propiedad.Titulo</td>
+                            <td>@propiedad.Ciudad</td>
+                            <td>@propiedad.Sector</td>
+                            <td><a class="btn btn-outline-secondary btn-sm" href="@($"/propiedades/{propiedad.IdPropiedad}/imagenes")">Imágenes</a>
+                                <a class="btn btn-outline-primary btn-sm" href="@($"/propiedades/{propiedad.IdPropiedad}/editar")">Editar</a>
+                                <a class="btn btn-primary btn-sm" href="@($"/propiedades/{propiedad.IdPropiedad}/publicar")">Publicar alquiler</a></td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        </div>
+    }
+}
+
+@code {
+    private List<PropiedadDto>? propiedades;
+    private string? error;
+    private bool cargando;
+
+    protected override void OnInitialized() => Sesion.Cambio += AlCambiarSesion;
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (firstRender && Sesion.EstaAutenticado)
+            await Cargar();
+    }
+
+    private async Task Cargar()
+    {
+        var token = Sesion.Token;
+        if (string.IsNullOrWhiteSpace(token))
+        {
+            propiedades = null;
+            error = null;
+            return;
+        }
+
+        cargando = true;
+        error = null;
+        try
+        {
+            var resultado = await Api.GetMisPropiedadesAsync(token);
+            if (Sesion.Token == token)
+            {
+                propiedades = resultado.Datos;
+                error = resultado.Error;
+            }
+        }
+        catch (HttpRequestException)
+        {
+            error = "No se pudo conectar con la API. Verifica que esté ejecutándose.";
+        }
+        catch (System.Text.Json.JsonException)
+        {
+            error = "La API devolvió datos con un formato inesperado.";
+        }
+        finally
+        {
+            cargando = false;
+            await InvokeAsync(StateHasChanged);
+        }
+    }
+
+    private void AlCambiarSesion() => _ = InvokeAsync(async () =>
+    {
+        propiedades = null;
+        error = null;
+        if (Sesion.EstaAutenticado)
+            await Cargar();
+        StateHasChanged();
+    });
+
+    public void Dispose() => Sesion.Cambio -= AlCambiarSesion;
+}

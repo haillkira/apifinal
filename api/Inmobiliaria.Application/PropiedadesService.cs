@@ -47,6 +47,7 @@ public sealed class PropiedadesService(
         return await repositorio.Eliminar(idVendedor, idPropiedad) switch
         {
             EstadoEliminacion.Eliminada => Result.Success(),
+            EstadoEliminacion.ConCompromisosActivos => Result.Failure(new Error("COMPROMISOS_ACTIVOS", "No se puede archivar: tiene reservas o contratos activos.")),
             EstadoEliminacion.ConPublicaciones => Result.Failure(new Error("CON_PUBLICACIONES", "La propiedad tiene publicaciones asociadas.")),
             _ => Result.Failure(new Error("NO_ENCONTRADA", "Propiedad no encontrada."))
         };

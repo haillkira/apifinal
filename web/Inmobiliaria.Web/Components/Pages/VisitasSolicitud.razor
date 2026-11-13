@@ -1,0 +1,54 @@
+@page "/solicitudes/{Id:int}/visitas"
+@using Inmobiliaria.Contracts
+@using Inmobiliaria.Web.Services
+@inject InmobiliariaApi Api
+@inject SesionUsuario Sesion
+<PageTitle>Visitas</PageTitle><h1>Visitas de la solicitud #@Id</h1>
+<p>Horarios de República Dominicana (UTC−04:00).</p>
+@if(mensaje is not null) { <p role="status" class="alert alert-info">@mensaje</p> }
+@if(!Sesion.EstaAutenticado) { <a href="/login">Iniciar sesión</a> }
+else {
+<button class="btn btn-outline-primary mb-3" disabled="@ocupado" @onclick="Cargar">Actualizar</button>
+@if(Sesion.Usuario?.Rol == "Vendedor" && disponible) {
+<h2 class="h5">Proponer visita</h2><p>Requiere una solicitud aceptada. Solo puede haber una visita pendiente o confirmada por solicitud.</p>
+<label for="fecha-visita">Fecha y hora</label><input id="fecha-visita" class="form-control mb-3" type="datetime-local" @bind="fecha" />
+<label for="notas-visita">Notas (opcional)</label><textarea id="notas-visita" class="form-control mb-3" maxlength="1000" @bind="notas"></textarea>
+<button class="btn btn-primary mb-3" disabled="@ocupado" @onclick="Programar">Proponer visita</button>
+}
+@foreach(var v in visitas) {
+<article class="card card-body mb-3"><h2 class="h5">@Mostrar(v.FechaUtc)</h2><p>@v.Estado · @v.Notas</p>
+@if(v.Estado is "Solicitada" or "Confirmada") {
+@if(v.Estado == "Solicitada" && Sesion.Usuario?.Rol == "Comprador") { <button class="btn btn-success" disabled="@ocupado" @onclick='() => Accion(v.IdVisita,"confirmar")'>Confirmar asistencia</button> }
+<button class="btn btn-outline-danger" disabled="@ocupado" @onclick="() => cancelar = v.IdVisita">Cancelar visita</button>
+@if(cancelar == v.IdVisita) { <p>¿Confirmas que deseas cancelar esta visita?</p><button disabled="@ocupado" @onclick='() => Accion(v.IdVisita,"cancelar")'>Sí, cancelar</button><button @onclick="() => cancelar = 0">Volver</button> }
+}
+</article>
+}
+<a href="/mis-solicitudes">Volver a solicitudes</a>
+}
+@code {
+[Parameter] public int Id {get;set;}
+List<VisitaDto> visitas=[]; string? mensaje; string notas=""; bool ocupado,disponible; int cancelar;
+DateTime fecha=DateTime.UtcNow.AddHours(-4).AddDays(1);
+string Ruta => $"api/v1/solicitudes/{Id}/visitas";
+static string Mostrar(DateTime utc) => new DateTimeOffset(DateTime.SpecifyKind(utc,DateTimeKind.Utc)).ToOffset(TimeSpan.FromHours(-4)).ToString("dd/MM/yyyy HH:mm");
+protected override Task OnParametersSetAsync() => Cargar();
+async Task Cargar() {
+ if(Sesion.Token is null) return; ocupado=true; disponible=false;
+ try { visitas=await Api.Consultar<List<VisitaDto>>(Ruta,Sesion.Token); disponible=true; }
+ catch(Exception ex) when(ex is HttpRequestException or TaskCanceledException) { mensaje="No se pudieron cargar las visitas. Comprueba tu sesión y que la solicitud te pertenece."; }
+ finally { ocupado=false; }
+}
+async Task Programar() {
+ if(ocupado || Sesion.Token is null) return;
+ var propuesta=new DateTimeOffset(DateTime.SpecifyKind(fecha,DateTimeKind.Unspecified),TimeSpan.FromHours(-4));
+ if(propuesta <= DateTimeOffset.UtcNow) {mensaje="Selecciona una fecha futura.";return;}
+ ocupado=true; mensaje=await Api.Enviar(HttpMethod.Post,Ruta,new ProgramarVisitaRequest(propuesta,notas),Sesion.Token) ?? "Visita propuesta. El comprador puede confirmar su asistencia.";
+ await Cargar();
+}
+async Task Accion(int visita,string accion) {
+ if(ocupado || Sesion.Token is null) return; ocupado=true;
+ mensaje=await Api.Enviar(HttpMethod.Post,$"{Ruta}/{visita}/{accion}",null,Sesion.Token) ?? "Visita actualizada.";
+ cancelar=0; await Cargar();
+}
+}

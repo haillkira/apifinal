@@ -48,6 +48,7 @@ public partial class Propiedades
     public DateTime FechaCreacion { get; set; }
 
     public DateTime? ActualizadoEn { get; set; }
+    public DateTime? EliminadoEn { get; set; }
 
     public virtual Provincias IdProvinciaNavigation { get; set; } = null!;
 
@@ -55,7 +56,7 @@ public partial class Propiedades
 
     public virtual Vendedores IdVendedorNavigation { get; set; } = null!;
 
-    public virtual ImagenesPropiedades? ImagenesPropiedades { get; set; }
+    public virtual ICollection<ImagenesPropiedades> ImagenesPropiedades { get; set; } = new List<ImagenesPropiedades>();
 
     public virtual ICollection<PropiedadCaracteristicas> PropiedadCaracteristicas { get; set; } = new List<PropiedadCaracteristicas>();
 

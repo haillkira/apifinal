@@ -20,6 +20,7 @@ public partial class Solicitudes
     public DateTime FechaSolicitud { get; set; }
 
     public DateTime? FechaRespuesta { get; set; }
+    public string? Respuesta { get; set; }
 
     public virtual ICollection<Contratos> Contratos { get; set; } = new List<Contratos>();
 

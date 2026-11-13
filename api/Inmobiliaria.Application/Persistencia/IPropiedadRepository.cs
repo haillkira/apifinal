@@ -18,7 +18,7 @@ public interface IPropiedadRepository
     Task<List<PublicacionResumenDto>> Catalogo(string? moneda, int pagina, DateTime ahora);
 }
 
-public enum EstadoEliminacion { Eliminada, NoEncontrada, ConPublicaciones }
+public enum EstadoEliminacion { Eliminada, NoEncontrada, ConPublicaciones, ConCompromisosActivos }
 
 public sealed record TipoPropiedadDto(int IdTipoPropiedad, string Nombre);
 public sealed record ProvinciaDto(int IdProvincia, string Nombre);

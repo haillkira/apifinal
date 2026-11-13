@@ -17,6 +17,9 @@ builder.Services.AddProblemDetails();
 builder.Services.AddScoped<AccesoService>();
 builder.Services.AddScoped<CuentasService>();
 builder.Services.AddScoped<PublicacionesService>();
+builder.Services.AddScoped<SolicitudesService>();
+builder.Services.AddScoped<VisitasService>();
+builder.Services.AddScoped<ArchivoService>();
 builder.Services.AddScoped<IClavesCuenta, ClavesIdentity>();
 builder.Services.AddHttpContextAccessor();
 builder.Services.AddScoped(sp => sp.GetRequiredService<IHttpContextAccessor>().HttpContext?.User
@@ -72,3 +75,5 @@ app.UseRateLimiter();app.UseAuthentication();app.UseAuthorization();
 app.MapGet("/",()=>Results.Ok(new{proyecto="Inmobiliaria",equipo="Luilton y Yerferson",alcance="Solo alquiler",estado="Base inicial; consulta README"}));
 app.MapGet("/health",()=>Results.Ok(new{status="ok",databaseConfigured=!string.IsNullOrWhiteSpace(cs),databaseChecked=false}));
 app.MapControllers();app.Run();
+
+public partial class Program { }

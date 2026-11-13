@@ -5,6 +5,7 @@ Base inicial .NET 10, solo alquiler. Yerferson Rosario Peña: 100444062. Datos d
 Extraer en una carpeta nueva. Abrir la carpeta Inmobiliaria_Progm4 que contiene Inmobiliaria.sln.
 ```powershell
 dotnet build
+dotnet test Inmobiliaria.sln
 dotnet run --project .\api\Inmobiliaria.Checks
 dotnet run --project .\api\Inmobiliaria.Api
 ```
@@ -13,8 +14,12 @@ Sin conexion Azure la API arranca en Development y las rutas /api devuelven 503 
 
 ## Contenido implementado
 Solucion y proyectos API/Contracts/Checks. 26 entidades EF y mapeo de claves, relaciones e indices. Registro comprador/vendedor, login JWT, perfil, bootstrap administrador, lista/aprobacion/rechazo de vendedores, catalogos, crear propiedad/publicacion de alquiler y listado publico paginado. Solo endpoint publico expone campos elegidos, no hashes ni cedulas.
-Checks es un ejecutable de comprobaciones de reglas, NO un proyecto xUnit: dotnet test no lo ejecuta. Pruebas SQL/HTTP pendientes de entorno.
-Clientes web, escritorio y Android reservados con README; no se presentan como aplicaciones hechas.
+Checks es un ejecutable de comprobaciones de reglas, NO un proyecto xUnit: dotnet test no lo ejecuta.
+Las pruebas HTTP/SQL estan en tests/Inmobiliaria.IntegrationTests y usan SQL Server LocalDB en Windows. Ejecuta ./tests/ejecutar-integracion.ps1 para preparar la instancia y probar; dotnet test Inmobiliaria.sln ejecuta ambas suites. Cada ejecucion crea y elimina su propia base temporal. Consulta tests/Inmobiliaria.IntegrationTests/README.md. La validacion contra Azure sigue pendiente.
+Las pruebas unitarias de los cuatro servicios estan en tests/Inmobiliaria.Application.UnitTests, con xUnit y Moq. Se ejecutan con dotnet test Inmobiliaria.sln y usan repositorios simulados, sin conexion a SQL ni secretos. Cubren permisos, registro/login, decisiones administrativas, propiedades y publicaciones; no sustituyen las pruebas de integracion SQL/HTTP.
+Blazor incluye registro/login, catalogo, creacion/edicion de propiedades, publicacion de alquileres y envio/consulta de solicitudes. La administracion sigue reservada a Windows Forms; por ahora la aprobacion se prueba mediante API. Escritorio y Android siguen pendientes.
+Imagenes: hasta 8 por propiedad/publicacion, carga JPG/PNG/WebP y galeria en el catalogo. Consulta docs/imagenes.md para limites y almacenamiento local.
+Consulta docs/recorrido-local.md para preparar una base LocalDB separada, iniciar API/Web y reproducir el recorrido completo. scripts/recorrido-local.ps1 incluye preparacion, arranque y aprobacion administrativa por API.
 
 ## Base Azure: paso posterior al build
 1. Crear Azure SQL InmobiliariaDB vacia. No ejecutar contra una base con datos existentes.

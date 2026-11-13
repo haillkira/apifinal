@@ -1,23 +1,6 @@
-﻿@inherits LayoutComponentBase
-
-<div class="page">
-    <div class="sidebar">
-        <NavMenu />
-    </div>
-
-    <main>
-        <div class="top-row px-4">
-            <a href="https://learn.microsoft.com/aspnet/core/" target="_blank">About</a>
-        </div>
-
-        <article class="content px-4">
-            @Body
-        </article>
-    </main>
-</div>
-
-<div id="blazor-error-ui" data-nosnippet>
-    An unhandled error has occurred.
-    <a href="." class="reload">Reload</a>
-    <span class="dismiss">🗙</span>
-</div>
+@inherits LayoutComponentBase
+<a class="skip-link" href="#contenido">Saltar al contenido</a>
+<header class="site-header"><NavMenu /></header>
+<main id="contenido"><article class="content">@Body</article></main>
+<footer class="site-footer"><a class="brand" href="/">inmobiliaria<span>●</span></a><p>Tu próximo capítulo empieza en casa.</p><span>Casas y apartamentos · República Dominicana</span><a href="/publicaciones">Explorar alquileres ↗</a></footer>
+<div id="blazor-error-ui" data-nosnippet>Se perdió la conexión. <a href="." class="reload">Recargar página</a><span class="dismiss">×</span></div>

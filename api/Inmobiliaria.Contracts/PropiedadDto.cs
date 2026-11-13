@@ -15,4 +15,5 @@ public sealed class PropiedadDto
     public int Parqueos { get; init; }
     public decimal MetrosCuadrados { get; init; }
     public string EstadoPropiedad { get; init; } = "";
+    public DateTime? EliminadoEn { get; init; }
 }

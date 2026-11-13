@@ -1,0 +1,67 @@
+@page "/propiedades/{Id:int}/imagenes"
+@using Inmobiliaria.Contracts
+@using Inmobiliaria.Web.Services
+@inject InmobiliariaApi Api
+@inject SesionUsuario Sesion
+
+<PageTitle>Imágenes de la propiedad</PageTitle>
+<h1>Imágenes de la propiedad</h1>
+<p>Hasta 8 imágenes. JPG, PNG o WebP, máximo 5 MB por imagen. Se mostrarán en las publicaciones de esta propiedad.</p>
+@if (Sesion.Usuario?.Rol != "Vendedor") { <a href="/login">Inicia sesión como vendedor</a> }
+else
+{
+    @if (mensaje is not null) { <div role="status" class="alert alert-info">@mensaje</div> }
+    <p>@imagenes.Count / 8 imágenes</p>
+    <label for="fotos">Seleccionar imágenes</label>
+    <InputFile id="fotos" OnChange="Subir" multiple accept="image/jpeg,image/png,image/webp" disabled="@(ocupado || !listo || imagenes.Count >= 8)" class="form-control mb-3" />
+    @if (ocupado) { <p role="status">Procesando imágenes…</p> }
+    <button class="btn btn-outline-primary mb-3" disabled="@ocupado" @onclick="Cargar">Actualizar imágenes</button>
+    <div class="row">
+        @foreach (var imagen in imagenes)
+        {
+            <div class="col-md-3 mb-3"><div class="card">
+                @if (previews.TryGetValue(imagen.IdImagen, out var url)) { <img src="@url" alt="Fotografía de la propiedad" style="height:180px;object-fit:cover" /> }
+                <button class="btn btn-outline-danger" disabled="@ocupado" @onclick="() => Eliminar(imagen.IdImagen)">Eliminar imagen</button>
+            </div></div>
+        }
+    </div>
+    <a href="/mis-propiedades" class="btn btn-link">Mis propiedades</a>
+    <a href="@($"/propiedades/{Id}/publicar")" class="btn btn-primary">Continuar a publicar</a>
+}
+@code {
+    [Parameter] public int Id { get; set; }
+    private List<ImagenDto> imagenes = [];
+    private Dictionary<int, string> previews = [];
+    private bool ocupado, listo;
+    private string? mensaje;
+    protected override Task OnParametersSetAsync() => Cargar();
+    private async Task Cargar()
+    {
+        if (Sesion.Token is null || Sesion.Usuario?.Rol != "Vendedor") return;
+        ocupado = true; listo = false;
+        try {
+            imagenes = await Api.Consultar<List<ImagenDto>>($"api/v1/propiedades/{Id}/imagenes", Sesion.Token);
+            previews.Clear();
+            foreach (var i in imagenes) previews[i.IdImagen] = await Api.ImagenPrivada(Id, i.IdImagen, Sesion.Token);
+            listo = true;
+        } catch (Exception ex) when (ex is HttpRequestException or TaskCanceledException) { mensaje = "No se pudieron cargar las imágenes. Comprueba tu sesión y la aprobación de tu cuenta."; }
+        finally { ocupado = false; }
+    }
+    private async Task Subir(InputFileChangeEventArgs e)
+    {
+        if (ocupado || Sesion.Token is null) return;
+        if (e.FileCount + imagenes.Count > 8) { mensaje = "Máximo 8 imágenes por propiedad/publicación."; return; }
+        var files = e.GetMultipleFiles(8);
+        if (files.Any(f => f.Size > 5 * 1024 * 1024 || f.Size == 0)) { mensaje = "Cada imagen debe pesar entre 1 byte y 5 MB."; return; }
+        ocupado = true;
+        mensaje = await Api.SubirImagenes(Id, files, Sesion.Token) ?? "Imágenes guardadas.";
+        await Cargar();
+    }
+    private async Task Eliminar(int imagen)
+    {
+        if (ocupado || Sesion.Token is null) return;
+        ocupado = true;
+        mensaje = await Api.Enviar(HttpMethod.Delete, $"api/v1/propiedades/{Id}/imagenes/{imagen}", null, Sesion.Token) ?? "Imagen eliminada.";
+        await Cargar();
+    }
+}

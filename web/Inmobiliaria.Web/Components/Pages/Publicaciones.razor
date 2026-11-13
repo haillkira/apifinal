@@ -2,10 +2,22 @@
 @using Inmobiliaria.Web.Models
 @using Inmobiliaria.Web.Services
 @inject InmobiliariaApi Api
+@inject SesionUsuario Sesion
 
 <PageTitle>Propiedades en alquiler</PageTitle>
 
-<h1>Propiedades en alquiler</h1>
+<div class="catalog-heading"><div><p class="eyebrow">ENCUENTRA TU PRÓXIMO HOGAR</p><h1>Espacios para vivir.</h1><p>Casas y apartamentos en alquiler. Tu próximo capítulo empieza aquí.</p></div><span class="catalog-tag">República Dominicana</span></div>
+@if (mensaje is not null) { <div class="alert alert-info" role="status">@mensaje</div> }
+@if (seleccionada is not null)
+{
+    <section class="card card-body mb-3">
+        <h2 class="h5">Solicitar: @seleccionada.Titulo</h2>
+        <label for="mensaje-solicitud">Mensaje al vendedor (opcional)</label>
+        <textarea id="mensaje-solicitud" class="form-control mb-3" maxlength="2000" @bind="texto" disabled="@enviando"></textarea>
+        <div><button class="btn btn-primary" disabled="@enviando" @onclick="Solicitar">@(enviando ? "Enviando…" : "Enviar solicitud")</button>
+        <button class="btn btn-link" disabled="@enviando" @onclick="() => seleccionada = null">Cancelar</button></div>
+    </section>
+}
 
 @if (error is not null)
 {
@@ -26,11 +38,20 @@ else
         {
             <div class="col-md-4 mb-3">
                 <div class="card h-100">
+                    <GaleriaPublicacion Id="p.IdPublicacion" Titulo="@p.Titulo" />
                     <div class="card-body">
                         <h5 class="card-title">@p.Titulo</h5>
                         <p class="card-text text-muted">@p.Sector, @p.Ciudad</p>
                         <p class="card-text">@p.Habitaciones hab. · @p.Banos baños</p>
                         <p class="fs-5 fw-bold">@p.Moneda @p.Precio.ToString("N2") / mes</p>
+                        @if (Sesion.Usuario?.Rol == "Comprador")
+                        {
+                            <button class="btn btn-primary" disabled="@enviando" @onclick="() => Seleccionar(p)">Solicitar alquiler</button>
+                        }
+                        else if (!Sesion.EstaAutenticado)
+                        {
+                            <a href="/login">Inicia sesión para solicitar</a>
+                        }
                         @if (p.Deposito is not null)
                         {
                             <p class="card-text small">Depósito: @p.Moneda @p.Deposito.Value.ToString("N2")</p>
@@ -45,6 +66,21 @@ else
 @code {
     private List<PublicacionResumen>? items;
     private string? error;
+    private string? mensaje;
+    private PublicacionResumen? seleccionada;
+    private string texto = "";
+    private bool enviando;
+    private void Seleccionar(PublicacionResumen p) { seleccionada = p; texto = ""; mensaje = null; }
+    private async Task Solicitar()
+    {
+        if (enviando || seleccionada is null || Sesion.Token is null) return;
+        enviando = true;
+        var fallo = await Api.Enviar(HttpMethod.Post, "api/v1/solicitudes",
+            new Inmobiliaria.Contracts.SolicitudAlquilerRequest(seleccionada.IdPublicacion, texto), Sesion.Token);
+        enviando = false;
+        mensaje = fallo ?? "Solicitud enviada. Puedes seguir su estado en Mis solicitudes.";
+        if (fallo is null) seleccionada = null;
+    }
 
     protected override async Task OnInitializedAsync()
     {
@@ -52,9 +88,9 @@ else
         {
             items = await Api.GetPublicacionesAsync();
         }
-        catch (HttpRequestException)
+        catch (HttpRequestException ex)
         {
-            error = "No se pudo conectar con la API. ¿Está corriendo?";
+            error = ex.Message;
         }
     }
 }
