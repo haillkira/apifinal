@@ -1,7 +1,7 @@
 using System.ComponentModel.DataAnnotations;
 using System.ComponentModel.DataAnnotations.Schema;
 
-namespace Inmobiliaria.Api.Entities;
+namespace Inmobiliaria.Data.Entities;
 
 [Table("Roles")]
 public sealed class Roles
@@ -155,6 +155,7 @@ public sealed class Propiedades
     public string EstadoPropiedad { get; set; } = "";
     public DateTime FechaCreacion { get; set; }
     public DateTime? ActualizadoEn { get; set; }
+    public DateTime? EliminadoEn { get; set; }
 }
 
 [Table("PropiedadCaracteristicas")]
@@ -244,6 +245,7 @@ public sealed class Solicitudes
     public string EstadoSolicitud { get; set; } = "";
     public DateTime FechaSolicitud { get; set; }
     public DateTime? FechaRespuesta { get; set; }
+    public string? Respuesta { get; set; }
 }
 
 [Table("Visitas")]

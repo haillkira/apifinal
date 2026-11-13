@@ -1,9 +1,11 @@
 using System.Text;
-using Inmobiliaria.Api.Data;
-using Inmobiliaria.Api.Entities;
-using Inmobiliaria.Api.Services;
+using System.Security.Claims;
+using Inmobiliaria.Contracts;
+using Inmobiliaria.Application;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
-using Microsoft.AspNetCore.Identity;
+using Inmobiliaria.Api.Seguridad;
+using Inmobiliaria.Application.Persistencia;
+using Inmobiliaria.Data;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
 using System.Threading.RateLimiting;
@@ -13,8 +15,18 @@ var builder=WebApplication.CreateBuilder(args);
 builder.Services.AddControllers();
 builder.Services.AddProblemDetails();
 builder.Services.AddScoped<AccesoService>();
+builder.Services.AddScoped<CuentasService>();
+builder.Services.AddScoped<PublicacionesService>();
+builder.Services.AddScoped<SolicitudesService>();
+builder.Services.AddScoped<VisitasService>();
+builder.Services.AddScoped<ArchivoService>();
+builder.Services.AddScoped<IClavesCuenta, ClavesIdentity>();
+builder.Services.AddHttpContextAccessor();
+builder.Services.AddScoped(sp => sp.GetRequiredService<IHttpContextAccessor>().HttpContext?.User
+    ?? new ClaimsPrincipal());
+builder.Services.AddScoped<Aplicada1.Core.IServiceResult<PropiedadDto, int>, PropiedadesService>();
 var cs=builder.Configuration.GetConnectionString("InmobiliariaConnection");
-builder.Services.AddDbContext<InmobiliariaDbContext>(o=>o.UseSqlServer(cs ?? ""));
+builder.Services.AddInmobiliariaData(cs ?? "");
 var key=builder.Configuration["Jwt:Key"];
 if(!builder.Environment.IsDevelopment() && (string.IsNullOrWhiteSpace(cs) || string.IsNullOrWhiteSpace(key) || Encoding.UTF8.GetByteCount(key)<32))throw new InvalidOperationException("Configura conexion y clave JWT de produccion.");
 // Clave efimera local: permite arrancar sin credenciales; login exige clave configurada.
@@ -26,20 +38,23 @@ builder.Services.AddOpenApi();
 var app=builder.Build();
 if (app.Environment.IsDevelopment())
 {
+    app.Logger.LogInformation("Contexto EF Core activo: {Contexto}", Inmobiliaria.Data.DependencyInjection.NombreContexto);
     app.MapOpenApi();
     app.MapScalarApiReference();
 }
 if (args.Contains("--bootstrap-admin"))
 {
     if(string.IsNullOrWhiteSpace(cs))throw new InvalidOperationException("Configura InmobiliariaConnection.");
-    using var scope=app.Services.CreateScope();var db=scope.ServiceProvider.GetRequiredService<InmobiliariaDbContext>();
-    var email=builder.Configuration["Bootstrap:Email"]?.Trim().ToLowerInvariant();var password=builder.Configuration["Bootstrap:Password"];
-    if(string.IsNullOrWhiteSpace(email) || string.IsNullOrWhiteSpace(password) || password.Length<16)throw new InvalidOperationException("Configura Bootstrap:Email y Password (16 caracteres minimo) mediante secretos.");
-    if(await db.Administradores.AnyAsync())throw new InvalidOperationException("Ya existe administrador; bootstrap bloqueado.");
-    var rol=await db.Roles.SingleAsync(x=>x.Nombre=="Administrador");
-    await using var tx=await db.Database.BeginTransactionAsync();
-    var u=new Usuarios{IdRol=rol.IdRol,Nombre="Administrador",Apellido="Equipo",Correo=email,Telefono="",EstadoCuenta="Activa",FechaRegistro=DateTime.UtcNow};u.PasswordHash=new PasswordHasher<Usuarios>().HashPassword(u,password);
-    db.Usuarios.Add(u);await db.SaveChangesAsync();db.Administradores.Add(new Administradores{IdUsuario=u.IdUsuario,NivelPermiso="Completo"});await db.SaveChangesAsync();await tx.CommitAsync();return;
+    using var scope = app.Services.CreateScope();
+    var cuentas = scope.ServiceProvider.GetRequiredService<CuentasService>();
+    var email = builder.Configuration["Bootstrap:Email"]?.Trim();
+    var password = builder.Configuration["Bootstrap:Password"];
+    if (string.IsNullOrWhiteSpace(email) || string.IsNullOrWhiteSpace(password) || password.Length < 16)
+        throw new InvalidOperationException("Configura Bootstrap:Email y Password (16 caracteres minimo) mediante secretos.");
+
+    if (!await cuentas.CrearPrimerAdministrador(email, password))
+        throw new InvalidOperationException("Ya existe administrador; bootstrap bloqueado.");
+    return;
 }
 app.Use(async(ctx,next)=>
 {
@@ -60,3 +75,5 @@ app.UseRateLimiter();app.UseAuthentication();app.UseAuthorization();
 app.MapGet("/",()=>Results.Ok(new{proyecto="Inmobiliaria",equipo="Luilton y Yerferson",alcance="Solo alquiler",estado="Base inicial; consulta README"}));
 app.MapGet("/health",()=>Results.Ok(new{status="ok",databaseConfigured=!string.IsNullOrWhiteSpace(cs),databaseChecked=false}));
 app.MapControllers();app.Run();
+
+public partial class Program { }

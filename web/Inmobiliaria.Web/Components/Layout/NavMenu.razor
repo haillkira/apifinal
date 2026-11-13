@@ -1,72 +1,24 @@
-﻿@implements IDisposable
+@implements IDisposable
 @using Inmobiliaria.Web.Services
 @inject SesionUsuario Sesion
 @inject NavigationManager Nav
-
-<div class="top-row ps-3 navbar navbar-dark">
-    <div class="container-fluid">
-        <a class="navbar-brand" href="">Inmobiliaria.Web</a>
-    </div>
-</div>
-
-<input type="checkbox" title="Navigation menu" class="navbar-toggler" />
-
-<div class="nav-scrollable" onclick="document.querySelector('.navbar-toggler').click()">
-    <nav class="nav flex-column">
-        <div class="nav-item px-3">
-            <NavLink class="nav-link" href="" Match="NavLinkMatch.All">
-                <span class="bi bi-house-door-fill-nav-menu" aria-hidden="true"></span> Home
-            </NavLink>
-        </div>
-
-        <div class="nav-item px-3">
-            <NavLink class="nav-link" href="counter">
-                <span class="bi bi-plus-square-fill-nav-menu" aria-hidden="true"></span> Counter
-            </NavLink>
-        </div>
-
-        <div class="nav-item px-3">
-            <NavLink class="nav-link" href="weather">
-                <span class="bi bi-list-nested-nav-menu" aria-hidden="true"></span> Weather
-            </NavLink>
-        </div>
-        <div class="nav-item px-3">
-            <NavLink class="nav-link" href="publicaciones">Propiedades</NavLink>
-            @if (Sesion.EstaAutenticado)
-            {
-                <div class="nav-item px-3">
-                    <span class="nav-link">Hola, @Sesion.Usuario?.Nombre (@Sesion.Usuario?.Rol)</span>
-                </div>
-                <div class="nav-item px-3">
-                    <a class="nav-link" href="" @onclick="Salir" @onclick:preventDefault>Salir</a>
-                </div>
-            }
-            else
-            {
-                <div class="nav-item px-3">
-                    <NavLink class="nav-link" href="login">Iniciar sesión</NavLink>
-                </div>
-                <div class="nav-item px-3">
-                    <NavLink class="nav-link" href="registro/comprador">Registrarme</NavLink>
-                </div>
-                <div class="nav-item px-3">
-                    <NavLink class="nav-link" href="registro/vendedor">Quiero publicar</NavLink>
-                </div>
-            }
-        </div>
-    </nav>
-</div>
-
+<div class="nav-shell">
+<a class="brand" href="/">inmobiliaria<span>●</span></a>
+<button class="menu-toggle" aria-label="Abrir navegación" aria-expanded="@abierto" @onclick="() => abierto = !abierto">Menú ☰</button>
+<nav class="@(abierto ? "site-nav open" : "site-nav")" aria-label="Principal">
+<NavLink href="/" Match="NavLinkMatch.All" @onclick="Cerrar">Inicio</NavLink>
+<NavLink href="/publicaciones" @onclick="Cerrar">Explorar alquileres</NavLink>
+@if(Sesion.Usuario?.Rol == "Vendedor") { <NavLink href="/mis-propiedades" @onclick="Cerrar">Mis propiedades</NavLink><NavLink href="/archivo" @onclick="Cerrar">Administrar</NavLink> }
+@if(Sesion.Usuario?.Rol is "Comprador" or "Vendedor") { <NavLink href="/mis-solicitudes" @onclick="Cerrar">Solicitudes</NavLink> }
+<div class="nav-account">
+@if(Sesion.EstaAutenticado) { <span class="account-name">@Sesion.Usuario?.Nombre <small>@Sesion.Usuario?.Rol</small></span><button class="btn btn-outline-primary btn-sm" @onclick="Salir">Salir</button> }
+else { <NavLink href="/login" @onclick="Cerrar">Iniciar sesión</NavLink><NavLink class="btn btn-primary" href="/registro/vendedor" @onclick="Cerrar">Publicar propiedad ↗</NavLink> }
+</div></nav></div>
 @code {
-    protected override void OnInitialized() => Sesion.Cambio += Refrescar;
-
-    private void Refrescar() => InvokeAsync(StateHasChanged);
-
-    private void Salir()
-    {
-        Sesion.Cerrar();
-        Nav.NavigateTo("/");
-    }
-
-    public void Dispose() => Sesion.Cambio -= Refrescar;
+ bool abierto;
+ void Cerrar() => abierto = false;
+ protected override void OnInitialized() => Sesion.Cambio += Refrescar;
+ void Refrescar() => InvokeAsync(StateHasChanged);
+ void Salir() { Sesion.Cerrar(); Cerrar(); Nav.NavigateTo("/"); }
+ public void Dispose() => Sesion.Cambio -= Refrescar;
 }

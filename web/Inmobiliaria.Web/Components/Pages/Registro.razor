@@ -73,9 +73,12 @@ else
 
         var req = new RegistroRequest(modelo.Nombre, modelo.Apellido, modelo.Correo,
                                       modelo.Password, modelo.Telefono, modelo.Cedula);
-        error = await Api.RegistrarAsync(EsVendedor ? "vendedores" : "compradores", req);
-
-        enviando = false;
-        exito = error is null;
+        try {
+            error = await Api.RegistrarAsync(EsVendedor ? "vendedores" : "compradores", req);
+            exito = error is null;
+        }
+        catch (HttpRequestException) { error = "No se pudo conectar. Inténtalo de nuevo."; }
+        catch (TaskCanceledException) { error = "La conexión tardó demasiado. Inténtalo de nuevo."; }
+        finally { enviando = false; }
     }
 }

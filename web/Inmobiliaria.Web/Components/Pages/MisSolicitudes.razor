@@ -1,0 +1,59 @@
+@page "/mis-solicitudes"
+@using Inmobiliaria.Contracts
+@using Inmobiliaria.Web.Services
+@inject SesionUsuario Sesion
+@inject InmobiliariaApi Api
+
+<PageTitle>Solicitudes de alquiler</PageTitle>
+<h1>@(Sesion.Usuario?.Rol == "Vendedor" ? "Solicitudes recibidas" : "Mis solicitudes")</h1>
+@if (Sesion.Usuario?.Rol is not ("Comprador" or "Vendedor")) { <p>Inicia sesión como comprador o vendedor.</p><a href="/login">Iniciar sesión</a> }
+else
+{
+    <button class="btn btn-outline-primary mb-3" disabled="@cargando" @onclick="Cargar">Actualizar</button>
+    @if (error is not null) { <div class="alert alert-danger" role="alert">@error</div> }
+    @if (cargando) { <p role="status">Cargando solicitudes…</p> }
+    else if (items is { Count: 0 }) { <p>Todavía no hay solicitudes.</p> }
+    @foreach (var s in items ?? [])
+    {
+        <article class="card mb-3"><div class="card-body"><h2 class="h5">@s.Titulo</h2>
+            <p>Solicitud #@s.IdSolicitud · @s.Estado · @s.FechaSolicitud.ToString("dd/MM/yyyy HH:mm") UTC</p>
+            @if (Sesion.Usuario?.Rol == "Vendedor") { <p>Comprador: @s.Comprador</p> }
+            <p>@s.Mensaje</p>
+            <a class="btn btn-outline-secondary mb-2" href="@($"/solicitudes/{s.IdSolicitud}/visitas")">Ver visitas</a>
+            @if(s.FechaRespuesta is not null) { <p>Respuesta: @s.Respuesta · @s.FechaRespuesta.Value.ToString("dd/MM/yyyy HH:mm") UTC</p> }
+            @if(Sesion.Usuario?.Rol == "Vendedor" && s.Estado == "Pendiente" && !s.PublicacionRetirada) {
+                <button class="btn btn-outline-primary" disabled="@respondiendo" @onclick="() => seleccionar = s.IdSolicitud">Responder</button>
+                @if(seleccionar == s.IdSolicitud) {
+                    <label for="respuesta">Mensaje (obligatorio al rechazar)</label><textarea id="respuesta" class="form-control" maxlength="1000" @bind="motivo"></textarea>
+                    <p>Aceptar no reserva ni alquila la propiedad.</p>
+                    <button disabled="@respondiendo" class="btn btn-success" @onclick="() => Responder(s.IdSolicitud,true)">Aceptar solicitud</button>
+                    <button disabled="@respondiendo" class="btn btn-danger" @onclick="() => Responder(s.IdSolicitud,false)">Rechazar solicitud</button>
+                }
+            }
+            @if (s.PublicacionRetirada) { <p class="text-muted">Publicación retirada. Esta solicitud se conserva como historial.</p> }
+        </div></article>
+    }
+}
+@code {
+    private List<SolicitudDto>? items;
+    private bool cargando;
+    private string? error;
+    private int seleccionar; private string motivo = ""; private bool respondiendo;
+    private async Task Responder(int id, bool aceptar) {
+        if(respondiendo || Sesion.Token is null) return;
+        if(!aceptar && string.IsNullOrWhiteSpace(motivo)) { error = "Indica el motivo del rechazo."; return; }
+        respondiendo = true;
+        var fallo = await Api.Enviar(HttpMethod.Post,$"api/v1/solicitudes/{id}/responder",new ResponderSolicitudRequest(aceptar,motivo),Sesion.Token);
+        seleccionar = 0; motivo = ""; await Cargar(); error = fallo; respondiendo = false;
+    }
+    protected override Task OnInitializedAsync() => Cargar();
+    private async Task Cargar()
+    {
+        if (Sesion.Usuario?.Rol is not ("Comprador" or "Vendedor")) return;
+        cargando = true; error = null; items = null;
+        try { items = await Api.Consultar<List<SolicitudDto>>("api/v1/solicitudes", Sesion.Token); }
+        catch (HttpRequestException ex) { error = ex.Message; }
+        catch (TaskCanceledException) { error = "La consulta tardó demasiado. Inténtalo de nuevo."; }
+        finally { cargando = false; }
+    }
+}

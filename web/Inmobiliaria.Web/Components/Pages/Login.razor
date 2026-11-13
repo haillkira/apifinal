@@ -8,6 +8,7 @@
 <PageTitle>Iniciar sesión</PageTitle>
 
 <h1>Iniciar sesión</h1>
+<p class="text-center">Tu próximo hogar y tus solicitudes, en un solo lugar.</p>
 
 <div class="col-md-5">
     <EditForm Model="modelo" OnValidSubmit="Entrar">
@@ -28,6 +29,7 @@
             <InputText type="password" class="form-control" @bind-Value="modelo.Password" />
         </div>
         <button class="btn btn-primary" disabled="@enviando">Entrar</button>
+        <p class="mt-4 mb-0 small">¿Aún no tienes cuenta? <a href="/registro/comprador">Regístrate aquí</a></p>
     </EditForm>
 </div>
 
@@ -40,16 +42,15 @@
     {
         enviando = true;
         error = null;
-        var (datos, mensaje) = await Api.LoginAsync(modelo.Correo, modelo.Password);
-        enviando = false;
-
-        if (datos is null)
+        try
         {
-            error = mensaje;
-            return;
+            var (datos, mensaje) = await Api.LoginAsync(modelo.Correo, modelo.Password);
+            if (datos is null) { error = mensaje; return; }
+            Sesion.Iniciar(datos);
+            Nav.NavigateTo(datos.Usuario.Rol == "Vendedor" ? "/mis-propiedades" : "/publicaciones");
         }
-
-        Sesion.Iniciar(datos);
-        Nav.NavigateTo("/");
+        catch (HttpRequestException) { error = "No se pudo conectar. Inténtalo de nuevo."; }
+        catch (TaskCanceledException) { error = "La conexión tardó demasiado. Inténtalo de nuevo."; }
+        finally { enviando = false; }
     }
 }

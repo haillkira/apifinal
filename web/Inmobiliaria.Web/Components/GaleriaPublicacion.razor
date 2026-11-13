@@ -1,0 +1,31 @@
+@using Inmobiliaria.Contracts
+@using Inmobiliaria.Web.Services
+@inject InmobiliariaApi Api
+@if (imagenes.Count > 0)
+{
+    <img src="@Api.UrlImagen(imagenes[indice].Url)" alt="@($"{Titulo}, imagen {indice + 1}")" loading="lazy" style="width:100%;height:220px;object-fit:cover" />
+    @if (imagenes.Count > 1)
+    {
+        <div class="d-flex justify-content-between align-items-center p-2">
+            <button class="btn btn-sm btn-outline-secondary" aria-label="Imagen anterior" @onclick="() => indice = (indice + imagenes.Count - 1) % imagenes.Count">Anterior</button>
+            <span>@(indice + 1) / @imagenes.Count</span>
+            <button class="btn btn-sm btn-outline-secondary" aria-label="Imagen siguiente" @onclick="() => indice = (indice + 1) % imagenes.Count">Siguiente</button>
+        </div>
+    }
+}
+else
+{
+    <div class="photo-placeholder" role="img" aria-label="Propiedad sin fotografías"><span aria-hidden="true">⌂</span><small>UN ESPACIO POR DESCUBRIR</small></div>
+}
+@code {
+    [Parameter] public int Id { get; set; }
+    [Parameter] public string Titulo { get; set; } = "Propiedad";
+    private List<ImagenDto> imagenes = [];
+    private int indice;
+    protected override async Task OnParametersSetAsync()
+    {
+        indice = 0;
+        try { imagenes = await Api.Consultar<List<ImagenDto>>($"api/v1/publicaciones/{Id}/imagenes"); }
+        catch (Exception ex) when (ex is HttpRequestException or TaskCanceledException) { imagenes = []; }
+    }
+}

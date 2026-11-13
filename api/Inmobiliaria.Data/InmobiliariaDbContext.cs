@@ -1,6 +1,6 @@
-using Inmobiliaria.Api.Entities;
+using Inmobiliaria.Data.Entities;
 using Microsoft.EntityFrameworkCore;
-namespace Inmobiliaria.Api.Data;
+namespace Inmobiliaria.Data;
 public sealed class InmobiliariaDbContext(DbContextOptions<InmobiliariaDbContext> options) : DbContext(options)
 {
     public DbSet<Roles> Roles => Set<Roles>();

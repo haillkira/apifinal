@@ -1,0 +1,71 @@
+@page "/propiedades/nueva"
+@page "/propiedades/{Id:int}/editar"
+@using Inmobiliaria.Contracts
+@using Inmobiliaria.Web.Models
+@using Inmobiliaria.Web.Services
+@inject InmobiliariaApi Api
+@inject SesionUsuario Sesion
+@inject NavigationManager Nav
+
+<PageTitle>Guardar propiedad</PageTitle>
+<h1>@(Id == 0 ? "Crear propiedad" : "Editar propiedad")</h1>
+@if (Sesion.Usuario?.Rol != "Vendedor")
+{
+    <p>Inicia sesión con una cuenta de vendedor para continuar.</p><a href="/login">Iniciar sesión</a>
+}
+else
+{
+    @if (error is not null) { <div class="alert alert-danger" role="alert">@error</div> }
+    @if (listo)
+    {
+        <EditForm Model="modelo" OnValidSubmit="Guardar">
+            <DataAnnotationsValidator /><ValidationSummary />
+            <fieldset disabled="@enviando" class="col-lg-8">
+                <label for="titulo">Título</label><InputText id="titulo" class="form-control mb-3" @bind-Value="modelo.Titulo" />
+                <label for="descripcion">Descripción</label><InputTextArea id="descripcion" class="form-control mb-3" @bind-Value="modelo.Descripcion" />
+                <label for="tipo">Tipo</label><InputSelect id="tipo" class="form-select mb-3" @bind-Value="modelo.IdTipoPropiedad"><option value="0">Selecciona</option>@foreach(var t in tipos) { <option value="@t.IdTipoPropiedad">@t.Nombre</option> }</InputSelect>
+                <label for="provincia">Provincia</label><InputSelect id="provincia" class="form-select mb-3" @bind-Value="modelo.IdProvincia"><option value="0">Selecciona</option>@foreach(var p in provincias) { <option value="@p.IdProvincia">@p.Nombre</option> }</InputSelect>
+                <label for="ciudad">Ciudad</label><InputText id="ciudad" class="form-control mb-3" @bind-Value="modelo.Ciudad" />
+                <label for="sector">Sector</label><InputText id="sector" class="form-control mb-3" @bind-Value="modelo.Sector" />
+                <label for="direccion">Dirección</label><InputText id="direccion" class="form-control mb-3" @bind-Value="modelo.Direccion" />
+                <label for="habitaciones">Habitaciones</label><InputNumber id="habitaciones" class="form-control mb-3" @bind-Value="modelo.Habitaciones" />
+                <label for="banos">Baños</label><InputNumber id="banos" class="form-control mb-3" @bind-Value="modelo.Banos" />
+                <label for="parqueos">Parqueos</label><InputNumber id="parqueos" class="form-control mb-3" @bind-Value="modelo.Parqueos" />
+                <label for="metros">Metros cuadrados</label><InputNumber id="metros" class="form-control mb-3" @bind-Value="modelo.MetrosCuadrados" />
+                <button class="btn btn-primary" type="submit">@(enviando ? "Guardando…" : "Guardar propiedad")</button>
+                <a href="/mis-propiedades" class="btn btn-link">Volver</a>
+            </fieldset>
+        </EditForm>
+    }
+}
+@code {
+    [Parameter] public int Id { get; set; }
+    private PropiedadModelo modelo = new();
+    private List<InmobiliariaApi.TipoDto> tipos = [];
+    private List<InmobiliariaApi.ProvinciaDto> provincias = [];
+    private bool listo, enviando;
+    private string? error;
+    protected override async Task OnParametersSetAsync()
+    {
+        listo = false; error = null; modelo = new();
+        if (Sesion.Usuario?.Rol != "Vendedor") return;
+        try {
+            // Comprueba también la aprobación antes de habilitar la creación.
+            await Api.Consultar<List<PropiedadDto>>("api/v1/propiedades", Sesion.Token);
+            tipos = await Api.Consultar<List<InmobiliariaApi.TipoDto>>("api/v1/catalogos/tipos");
+            provincias = await Api.Consultar<List<InmobiliariaApi.ProvinciaDto>>("api/v1/catalogos/provincias");
+            if (Id != 0) modelo = PropiedadModelo.Desde(await Api.Consultar<PropiedadDto>($"api/v1/propiedades/{Id}", Sesion.Token));
+            listo = true;
+        } catch (HttpRequestException ex) { error = ex.Message; }
+        catch (TaskCanceledException) { error = "No se pudo cargar la propiedad. Inténtalo de nuevo."; }
+    }
+    private async Task Guardar()
+    {
+        if (enviando || Sesion.Token is null) return;
+        enviando = true;
+        error = await Api.Enviar(Id == 0 ? HttpMethod.Post : HttpMethod.Put,
+            Id == 0 ? "api/v1/propiedades" : $"api/v1/propiedades/{Id}", modelo.Solicitud(), Sesion.Token);
+        enviando = false;
+        if (error is null) Nav.NavigateTo("/mis-propiedades");
+    }
+}

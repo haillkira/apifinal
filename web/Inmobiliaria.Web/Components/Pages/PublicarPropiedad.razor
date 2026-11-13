@@ -1,0 +1,51 @@
+@page "/propiedades/{Id:int}/publicar"
+@using Inmobiliaria.Contracts
+@using Inmobiliaria.Web.Models
+@using Inmobiliaria.Web.Services
+@inject SesionUsuario Sesion
+@inject InmobiliariaApi Api
+
+<PageTitle>Publicar alquiler</PageTitle><h1>Publicar alquiler</h1>
+@if (Sesion.Usuario?.Rol != "Vendedor") { <p>Inicia sesión como vendedor.</p><a href="/login">Iniciar sesión</a> }
+else if (exito) { <div class="alert alert-success">Tu alquiler ya está publicado.</div><a href="/publicaciones">Ver catálogo</a> }
+else
+{
+    @if (error is not null) { <div class="alert alert-danger" role="alert">@error</div> }
+    @if (propiedad is not null)
+    {
+        <h2>@propiedad.Titulo</h2>
+        <a class="btn btn-outline-primary mb-3" href="@($"/propiedades/{Id}/imagenes")">Agregar o administrar imágenes (máximo 8)</a>
+        <EditForm Model="modelo" OnValidSubmit="Publicar">
+            <DataAnnotationsValidator /><ValidationSummary />
+            <fieldset class="col-md-6" disabled="@enviando">
+                <label for="precio">Precio mensual</label><InputNumber id="precio" class="form-control mb-3" @bind-Value="modelo.Precio" />
+                <label for="moneda">Moneda</label><InputSelect id="moneda" class="form-select mb-3" @bind-Value="modelo.Moneda"><option>DOP</option><option>USD</option></InputSelect>
+                <label for="deposito">Depósito (opcional)</label><InputNumber id="deposito" class="form-control mb-3" @bind-Value="modelo.Deposito" />
+                <label for="mantenimiento">Mantenimiento mensual (opcional)</label><InputNumber id="mantenimiento" class="form-control mb-3" @bind-Value="modelo.MantenimientoMensual" />
+                <button type="submit" class="btn btn-primary">@(enviando ? "Publicando…" : "Publicar alquiler")</button><a href="/mis-propiedades" class="btn btn-link">Volver</a>
+            </fieldset>
+        </EditForm>
+    }
+}
+@code {
+    [Parameter] public int Id { get; set; }
+    private PublicacionModelo modelo = new();
+    private PropiedadDto? propiedad;
+    private string? error;
+    private bool enviando, exito;
+    protected override async Task OnParametersSetAsync()
+    {
+        propiedad = null; error = null; exito = false; modelo = new();
+        if (Sesion.Usuario?.Rol != "Vendedor") return;
+        try { propiedad = await Api.Consultar<PropiedadDto>($"api/v1/propiedades/{Id}", Sesion.Token); }
+        catch (HttpRequestException ex) { error = ex.Message; }
+        catch (TaskCanceledException) { error = "No se pudo cargar la propiedad."; }
+    }
+    private async Task Publicar()
+    {
+        if (enviando || Sesion.Token is null) return;
+        enviando = true;
+        error = await Api.Enviar(HttpMethod.Post, "api/v1/publicaciones", new PublicacionRequest(Id, "Alquiler", modelo.Precio, modelo.Moneda, modelo.Deposito, modelo.MantenimientoMensual), Sesion.Token);
+        enviando = false; exito = error is null;
+    }
+}

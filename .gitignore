@@ -13,3 +13,4 @@ publish/
 *.db*
 *.user
 .env
+**/App_Data/imagenes/
