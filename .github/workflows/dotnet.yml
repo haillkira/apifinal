@@ -26,14 +26,14 @@ jobs:
       # 1) Descarga el código fuente del repositorio.
       # Incluimos el historial completo para que Sonar pueda comparar los cambios.
       - name: Checkout repository
-        uses: actions/checkout@v6
+        uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
         with:
           fetch-depth: 0
 
       # 2) Instala el SDK de .NET 10 que utiliza Inmobiliaria.
       # Así el runner compila con la versión correspondiente al proyecto.
       - name: Setup .NET SDK
-        uses: actions/setup-dotnet@v5
+        uses: actions/setup-dotnet@26b0ec14cb23fa6904739307f278c14f94c95bf1 # v5
         with:
           dotnet-version: '10.0.x'
 
@@ -101,7 +101,7 @@ jobs:
       # Solo intenta publicarlos cuando existen archivos TRX y el contexto
       # permite escribir checks, evitando otro error si las pruebas no arrancaron.
       - name: Publish test results
-        uses: dorny/test-reporter@v2
+        uses: dorny/test-reporter@4a2e97665d5fa767581ef38eca97b9694bd4eef4 # v2
         if: ${{ !cancelled() && hashFiles('TestResults/**/*.trx') != '' && (github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository) }}
         with:
           name: Resultados .NET - Servicios y Web
