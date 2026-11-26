@@ -57,15 +57,15 @@ jobs:
         if: ${{ env.SONAR_TOKEN == '' }}
         run: echo "Configura el secreto SONAR_TOKEN para activar SonarQube Cloud."
 
-      # 6) Inicia el análisis de SonarQube Cloud antes de compilar.
-      # La organización y el Project Key vinculan el análisis con nuestro proyecto.
+     # 6) Inicia el análisis en nuestra cuenta de SonarQube Cloud.
+      # Los resultados llegarán al proyecto apifinal.
       - name: Begin SonarCloud analysis
         id: sonar_begin
         if: ${{ env.SONAR_TOKEN != '' }}
         run: |
           dotnet sonarscanner begin \
-            /o:"tesisenel" \
-            /k:"TesisEnel_UASD_Inmoviliaria_Luilton_Jerferson_2023-02" \
+            /o:"haillkira" \
+            /k:"haillkira_apifinal" \
             /d:sonar.token="$SONAR_TOKEN" \
             /d:sonar.host.url="https://sonarcloud.io"
 
