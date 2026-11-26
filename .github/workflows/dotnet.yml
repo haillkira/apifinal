@@ -91,10 +91,10 @@ jobs:
         if: ${{ !cancelled() && steps.compilacion.outcome == 'success' }}
         run: dotnet test tests/Inmobiliaria.Web.Tests/Inmobiliaria.Web.Tests.csproj --configuration Release --no-build --verbosity minimal --logger "trx;LogFileName=web.trx" --results-directory TestResults --collect:"XPlat Code Coverage" -- DataCollectionRunSettings.DataCollectors.DataCollector.Configuration.Format=opencover
 
-      # Continuación del paso 8: comprobamos las claves y firmas JWT sin depender de SQL.
-      - name: Test JWT security
+      # Continuación del paso 8: comprobamos JWT y los endpoints HTTP sin depender de SQL.
+      - name: Test API security without SQL
         if: ${{ !cancelled() && steps.compilacion.outcome == 'success' }}
-        run: dotnet test tests/Inmobiliaria.IntegrationTests/Inmobiliaria.IntegrationTests.csproj --configuration Release --no-build --filter FullyQualifiedName~SeguridadJwtTests --logger "trx;LogFileName=seguridad.trx" --results-directory TestResults --collect:"XPlat Code Coverage" -- DataCollectionRunSettings.DataCollectors.DataCollector.Configuration.Format=opencover
+        run: dotnet test tests/Inmobiliaria.IntegrationTests/Inmobiliaria.IntegrationTests.csproj --configuration Release --no-build --filter "FullyQualifiedName~SeguridadJwtTests|FullyQualifiedName~SeguridadHttpTests" --logger "trx;LogFileName=seguridad.trx" --results-directory TestResults --collect:"XPlat Code Coverage" -- DataCollectionRunSettings.DataCollectors.DataCollector.Configuration.Format=opencover
 
       # 9) Finaliza el análisis y envía los resultados a SonarQube Cloud.
       # Se ejecuta si Sonar inició y la solución compiló correctamente,
