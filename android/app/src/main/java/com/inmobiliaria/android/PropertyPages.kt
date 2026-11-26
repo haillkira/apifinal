@@ -180,9 +180,12 @@ internal fun PropertyImagesPage(api: Api, id: Int, publish: () -> Unit, notify: 
         if (files.isNotEmpty()) scope.launch {
             op.run {
                 require(files.size + list.size <= 8) { "Puedes guardar hasta 8 imágenes por propiedad." }
-                api.upload(path, context.contentResolver, files)
-                notify("Imágenes guardadas.")
-                load()
+                try {
+                    api.upload(path, context.contentResolver, files)
+                    notify("Imágenes guardadas.")
+                } finally {
+                    load()
+                }
             }
         }
     }

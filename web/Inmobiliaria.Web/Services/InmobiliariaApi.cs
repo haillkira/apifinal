@@ -24,16 +24,18 @@ public class InmobiliariaApi(HttpClient http)
     {
         try
         {
-            using var content = new MultipartFormDataContent();
+            // Una imagen por petición mantiene el límite de 8 MB sin reducir las 8 fotos permitidas.
             foreach (var archivo in archivos)
             {
-                var stream = new StreamContent(archivo.OpenReadStream(5 * 1024 * 1024));
-                content.Add(stream, "archivos", "imagen");
+                using var content = new MultipartFormDataContent();
+                content.Add(new StreamContent(archivo.OpenReadStream(5 * 1024 * 1024)), "archivos", "imagen");
+                using var request = new HttpRequestMessage(HttpMethod.Post, $"api/v1/propiedades/{propiedad}/imagenes") { Content = content };
+                request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", token);
+                using var response = await http.SendAsync(request);
+                if (!response.IsSuccessStatusCode)
+                    return "La carga se detuvo; algunas imágenes pueden haberse guardado. " + await LeerErrorAsync(response);
             }
-            using var request = new HttpRequestMessage(HttpMethod.Post, $"api/v1/propiedades/{propiedad}/imagenes") { Content = content };
-            request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", token);
-            using var response = await http.SendAsync(request);
-            return response.IsSuccessStatusCode ? null : await LeerErrorAsync(response);
+            return null;
         }
         catch (Exception ex) when (ex is HttpRequestException or IOException or TaskCanceledException)
         { return "No se pudo completar la carga. Actualiza las imágenes antes de reintentar."; }

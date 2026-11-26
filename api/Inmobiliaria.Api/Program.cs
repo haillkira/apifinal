@@ -1,4 +1,3 @@
-using System.Text;
 using System.Security.Claims;
 using Inmobiliaria.Contracts;
 using Inmobiliaria.Application;
@@ -29,18 +28,31 @@ builder.Services.AddScoped(sp => sp.GetRequiredService<IHttpContextAccessor>().H
 builder.Services.AddScoped<Aplicada1.Core.IServiceResult<PropiedadDto, int>, PropiedadesService>();
 var cs=builder.Configuration.GetConnectionString("InmobiliariaConnection");
 builder.Services.AddInmobiliariaData(cs ?? "");
-var key=builder.Configuration["Jwt:Key"];
-if(!builder.Environment.IsDevelopment() && (string.IsNullOrWhiteSpace(cs) || string.IsNullOrWhiteSpace(key) || Encoding.UTF8.GetByteCount(key)<32))throw new InvalidOperationException("Configura conexion y clave JWT de produccion.");
-// Clave efimera local: permite arrancar sin credenciales; login exige clave configurada.
-var validationKey=string.IsNullOrWhiteSpace(key)?Convert.ToBase64String(System.Security.Cryptography.RandomNumberGenerator.GetBytes(48)):key;
-builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme).AddJwtBearer(o=>o.TokenValidationParameters=new TokenValidationParameters{ValidateIssuer=true,ValidateAudience=true,ValidateLifetime=true,ValidateIssuerSigningKey=true,ValidIssuer=builder.Configuration["Jwt:Issuer"],ValidAudience=builder.Configuration["Jwt:Audience"],IssuerSigningKey=new SymmetricSecurityKey(Encoding.UTF8.GetBytes(validationKey)),ClockSkew=TimeSpan.FromSeconds(30)});
+if (!builder.Environment.IsDevelopment() && string.IsNullOrWhiteSpace(cs))
+    throw new InvalidOperationException("Configura la conexión de producción.");
+builder.Services.AddSingleton(_ => ClaveJwt.Cargar(builder.Environment.IsDevelopment()));
+builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme).AddJwtBearer();
+builder.Services.AddOptions<JwtBearerOptions>(JwtBearerDefaults.AuthenticationScheme)
+    .Configure<ClaveJwt>((opciones, clave) => opciones.TokenValidationParameters = new TokenValidationParameters
+    {
+        ValidateIssuer = true,
+        ValidateAudience = true,
+        ValidateLifetime = true,
+        ValidateIssuerSigningKey = true,
+        ValidIssuer = builder.Configuration["Jwt:Issuer"],
+        ValidAudience = builder.Configuration["Jwt:Audience"],
+        IssuerSigningKey = clave.ClaveFirma,
+        ClockSkew = TimeSpan.FromSeconds(30)
+    });
 builder.Services.AddAuthorization();
 builder.Services.AddRateLimiter(o=>{o.RejectionStatusCode=429;o.GlobalLimiter=PartitionedRateLimiter.Create<HttpContext,string>(ctx=>RateLimitPartition.GetFixedWindowLimiter(ctx.Connection.RemoteIpAddress?.ToString() ?? "unknown",_=>new FixedWindowRateLimiterOptions{PermitLimit=60,Window=TimeSpan.FromMinutes(1),QueueLimit=0}));});
 builder.Services.AddOpenApi();
 var app=builder.Build();
+_ = app.Services.GetRequiredService<ClaveJwt>();
 if (app.Environment.IsDevelopment())
 {
-    app.Logger.LogInformation("Contexto EF Core activo: {Contexto}", Inmobiliaria.Data.DependencyInjection.NombreContexto);
+    if (app.Logger.IsEnabled(LogLevel.Information))
+        app.Logger.LogInformation("Contexto EF Core activo: {Contexto}", Inmobiliaria.Data.DependencyInjection.NombreContexto);
     app.MapOpenApi();
     app.MapScalarApiReference();
 }
@@ -75,7 +87,6 @@ app.Use(async(ctx,next)=>
 if(!app.Environment.IsDevelopment())app.UseHttpsRedirection();
 app.UseRateLimiter();app.UseAuthentication();app.UseAuthorization();
 app.MapGet("/",()=>Results.Ok(new{proyecto="Inmobiliaria",equipo="Luilton y Yerferson",alcance="Solo alquiler",estado="Base inicial; consulta README"}));
-app.MapGet("/health",()=>Results.Ok(new{status="ok",databaseConfigured=!string.IsNullOrWhiteSpace(cs),databaseChecked=false}));
-app.MapControllers();app.Run();
-
-public partial class Program { }
+app.MapGet("/health",()=>Results.Ok(new{status="ok",databaseConfigured = !string.IsNullOrWhiteSpace(cs),databaseChecked=false}));
+app.MapControllers();
+await app.RunAsync();

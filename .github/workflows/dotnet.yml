@@ -57,7 +57,7 @@ jobs:
         if: ${{ env.SONAR_TOKEN == '' }}
         run: echo "Configura el secreto SONAR_TOKEN para activar SonarQube Cloud."
 
-     # 6) Inicia el análisis en nuestra cuenta de SonarQube Cloud.
+      # 6) Inicia el análisis en nuestra cuenta de SonarQube Cloud.
       # Los resultados llegarán al proyecto apifinal.
       - name: Begin SonarCloud analysis
         id: sonar_begin
@@ -67,7 +67,8 @@ jobs:
             /o:"haillkira" \
             /k:"haillkira_apifinal" \
             /d:sonar.token="$SONAR_TOKEN" \
-            /d:sonar.host.url="https://sonarcloud.io"
+            /d:sonar.host.url="https://sonarcloud.io" \
+            /d:sonar.cs.opencover.reportsPaths="TestResults/**/coverage.opencover.xml"
 
       # 7) Compila toda la solución en modo Release.
       # --no-restore aprovecha los paquetes descargados en el paso 3.
@@ -82,13 +83,18 @@ jobs:
       # Su ejecución requiere la instancia SQLEXPRESS configurada en Windows.
       - name: Test services
         if: ${{ !cancelled() && steps.compilacion.outcome == 'success' }}
-        run: dotnet test tests/Inmobiliaria.Application.UnitTests/Inmobiliaria.Application.UnitTests.csproj --configuration Release --no-build --verbosity minimal --logger "trx;LogFileName=servicios.trx" --results-directory TestResults
+        run: dotnet test tests/Inmobiliaria.Application.UnitTests/Inmobiliaria.Application.UnitTests.csproj --configuration Release --no-build --verbosity minimal --logger "trx;LogFileName=servicios.trx" --results-directory TestResults --collect:"XPlat Code Coverage" -- DataCollectionRunSettings.DataCollectors.DataCollector.Configuration.Format=opencover
 
       # Continuación del paso 8: comprobamos la web.
       # Si los servicios fallan, la web todavía tiene su propio examen.
       - name: Test web
         if: ${{ !cancelled() && steps.compilacion.outcome == 'success' }}
-        run: dotnet test tests/Inmobiliaria.Web.Tests/Inmobiliaria.Web.Tests.csproj --configuration Release --no-build --verbosity minimal --logger "trx;LogFileName=web.trx" --results-directory TestResults
+        run: dotnet test tests/Inmobiliaria.Web.Tests/Inmobiliaria.Web.Tests.csproj --configuration Release --no-build --verbosity minimal --logger "trx;LogFileName=web.trx" --results-directory TestResults --collect:"XPlat Code Coverage" -- DataCollectionRunSettings.DataCollectors.DataCollector.Configuration.Format=opencover
+
+      # Continuación del paso 8: comprobamos las claves y firmas JWT sin depender de SQL.
+      - name: Test JWT security
+        if: ${{ !cancelled() && steps.compilacion.outcome == 'success' }}
+        run: dotnet test tests/Inmobiliaria.IntegrationTests/Inmobiliaria.IntegrationTests.csproj --configuration Release --no-build --filter FullyQualifiedName~SeguridadJwtTests --logger "trx;LogFileName=seguridad.trx" --results-directory TestResults --collect:"XPlat Code Coverage" -- DataCollectionRunSettings.DataCollectors.DataCollector.Configuration.Format=opencover
 
       # 9) Finaliza el análisis y envía los resultados a SonarQube Cloud.
       # Se ejecuta si Sonar inició y la solución compiló correctamente,

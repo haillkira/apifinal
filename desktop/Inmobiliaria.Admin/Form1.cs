@@ -53,7 +53,7 @@ public partial class Form1 : Form
         UseWaitCursor=true;entrar.Enabled=false;tabs.Enabled=false;salir.Enabled=false;
         try{await accion();}
         catch(Exception ex) when(ex is HttpRequestException or TaskCanceledException or JsonException or InvalidOperationException){estado.Text=ex.Message;MessageBox.Show(this,ex is TaskCanceledException?"La API tardó demasiado. Actualiza antes de reintentar.":ex.Message,"Operación no completada",MessageBoxButtons.OK,MessageBoxIcon.Information);}
-        finally{UseWaitCursor=false;entrar.Enabled=!conectado;tabs.Enabled=conectado;salir.Enabled=conectado;}
+        finally{UseWaitCursor=false;entrar.Enabled = !conectado;tabs.Enabled=conectado;salir.Enabled=conectado;}
     }
     private async Task Validar(HttpResponseMessage response)
     {

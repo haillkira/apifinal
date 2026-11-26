@@ -7,8 +7,14 @@ using Microsoft.Extensions.DependencyInjection;
 
 namespace Inmobiliaria.IntegrationTests;
 
-public sealed class ApiSqlFixture : WebApplicationFactory<Program>, IAsyncLifetime
+public sealed partial class ApiSqlFixture : WebApplicationFactory<Program>, IAsyncLifetime
 {
+    [GeneratedRegex(@"^\s*GO\s*\r?$", RegexOptions.Multiline | RegexOptions.IgnoreCase, 1000)]
+    private static partial Regex SeparadorSql();
+
+    [GeneratedRegex(@"\AInmobiliaria_Integration_[0-9a-f]{32}\z", RegexOptions.CultureInvariant, 100)]
+    private static partial Regex NombreBase();
+
     // Always local, unique and disposable. Never reads application/user-secret SQL connections.
     private readonly string database = "Inmobiliaria_Integration_" + Guid.NewGuid().ToString("N");
     private const string Master = @"Server=.\SQLEXPRESS;Database=master;Integrated Security=true;TrustServerCertificate=true";
@@ -23,7 +29,8 @@ public sealed class ApiSqlFixture : WebApplicationFactory<Program>, IAsyncLifeti
         builder.UseEnvironment("Development");
         builder.UseSetting("Imagenes:Carpeta", ImagenesCarpeta);
         builder.UseSetting("ConnectionStrings:InmobiliariaConnection", ConnectionString);
-        builder.UseSetting("Jwt:Key", Convert.ToBase64String(System.Security.Cryptography.RandomNumberGenerator.GetBytes(48)));
+        builder.ConfigureServices(services => services.AddSingleton(new Inmobiliaria.Api.Seguridad.ClaveJwt(
+            Convert.ToBase64String(System.Security.Cryptography.RandomNumberGenerator.GetBytes(48)), desarrollo: true)));
         builder.UseSetting("Jwt:Issuer", "integration-tests");
         builder.UseSetting("Jwt:Audience", "integration-tests");
     }
@@ -40,7 +47,7 @@ public sealed class ApiSqlFixture : WebApplicationFactory<Program>, IAsyncLifeti
             {
                 // Adapt only the scripts' database-name guard to this generated test database.
                 var sql = (await File.ReadAllTextAsync(file)).Replace("N'InmobiliariaDB'", $"N'{database}'");
-                foreach (var batch in Regex.Split(sql, @"^\s*GO\s*\r?$", RegexOptions.Multiline | RegexOptions.IgnoreCase))
+                foreach (var batch in SeparadorSql().Split(sql))
                     if (!string.IsNullOrWhiteSpace(batch)) await ExecuteSql(batch);
             }
             using var scope = Services.CreateScope();
@@ -71,7 +78,7 @@ public sealed class ApiSqlFixture : WebApplicationFactory<Program>, IAsyncLifeti
     private async Task DropDatabase()
     {
         if (!created) return;
-        if (!Regex.IsMatch(database, "^Inmobiliaria_Integration_[0-9a-f]{32}$")) throw new InvalidOperationException("Unsafe database name.");
+        if (!NombreBase().IsMatch(database)) throw new InvalidOperationException("Unsafe database name.");
         SqlConnection.ClearAllPools();
         await using var connection = new SqlConnection(Master);
         await connection.OpenAsync();

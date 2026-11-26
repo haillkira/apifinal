@@ -59,9 +59,10 @@ internal class Api(private val base: String, private val token: String?) {
     }
 
     suspend fun upload(path: String, resolver: ContentResolver, files: List<Uri>) {
-        val boundary = UUID.randomUUID().toString()
-        connect("POST", path, "multipart/form-data; boundary=$boundary", { stream ->
-            for ((index, file) in files.withIndex()) {
+        // Se conserva la selección múltiple, enviando una imagen de hasta 5 MB por petición.
+        for (file in files) {
+            val boundary = UUID.randomUUID().toString()
+            connect("POST", path, "multipart/form-data; boundary=$boundary", { stream ->
                 val bytes = resolver.openInputStream(file)?.use { input ->
                     val buffer = java.io.ByteArrayOutputStream()
                     val chunk = ByteArray(8192)
@@ -79,12 +80,12 @@ internal class Api(private val base: String, private val token: String?) {
                 val mime = resolver.getType(file)?.takeIf { it in setOf("image/jpeg", "image/png", "image/webp") }
                     ?: "application/octet-stream"
                 stream.write(("--$boundary\r\nContent-Disposition: form-data; name=\"archivos\"; " +
-                    "filename=\"imagen-${index + 1}\"\r\nContent-Type: $mime\r\n\r\n").toByteArray())
+                    "filename=\"imagen\"\r\nContent-Type: $mime\r\n\r\n").toByteArray())
                 stream.write(bytes)
                 stream.write("\r\n".toByteArray())
-            }
-            stream.write("--$boundary--\r\n".toByteArray())
-        }) { }
+                stream.write("--$boundary--\r\n".toByteArray())
+            }) { }
+        }
     }
 
     private suspend fun <T> connect(

@@ -11,9 +11,10 @@ namespace Inmobiliaria.IntegrationTests;
 [Collection("HTTP y SQL")]
 public sealed class HttpSqlTests(ApiSqlFixture app)
 {
+    private static readonly int[] ErroresDuplicados = [2601, 2627];
     private static int documento;
     private HttpClient Cliente() => app.CreateClient();
-    private async Task<LoginResponse> Login(HttpClient client, string email)
+    private static async Task<LoginResponse> Login(HttpClient client, string email)
     {
         using var response = await client.PostAsJsonAsync("/api/v1/auth/login", new LoginRequest(email, ApiSqlFixture.Password));
         Assert.Equal(HttpStatusCode.OK, response.StatusCode);
@@ -22,7 +23,7 @@ public sealed class HttpSqlTests(ApiSqlFixture app)
         return login;
     }
 
-    private async Task<(string Email, int Usuario)> Registrar(HttpClient client, string rol = "vendedores")
+    private static async Task<(string Email, int Usuario)> Registrar(HttpClient client, string rol = "vendedores")
     {
         var email = Guid.NewGuid().ToString("N") + "@integration.example";
         using var response = await client.PostAsJsonAsync("/api/v1/auth/" + rol,
@@ -44,7 +45,7 @@ public sealed class HttpSqlTests(ApiSqlFixture app)
         Assert.Equal(1, await app.Scalar("SELECT COUNT(*) FROM Notificaciones WHERE IdUsuarioDestino=@id", new SqlParameter("@id", usuario)));
     }
 
-    private async Task<PropiedadRequest> Datos(HttpClient client)
+    private static async Task<PropiedadRequest> Datos(HttpClient client)
     {
         var tipos = (await client.GetFromJsonAsync<List<TipoPropiedadDto>>("/api/v1/catalogos/tipos"))!;
         var provincias = (await client.GetFromJsonAsync<List<ProvinciaDto>>("/api/v1/catalogos/provincias"))!;
@@ -154,7 +155,7 @@ public sealed class HttpSqlTests(ApiSqlFixture app)
     public async Task Sql_ImponeUnicidadYClaveForanea()
     {
         var duplicate = await Assert.ThrowsAsync<SqlException>(() => app.ExecuteSql("INSERT INTO Roles(Nombre) VALUES(N'Administrador')"));
-        Assert.Contains(duplicate.Number, new[] { 2601, 2627 });
+        Assert.Contains(duplicate.Number, ErroresDuplicados);
         var foreignKey = await Assert.ThrowsAsync<SqlException>(() => app.ExecuteSql("INSERT INTO Administradores(IdUsuario,NivelPermiso) VALUES(-1,N'Completo')"));
         Assert.Equal(547, foreignKey.Number);
     }

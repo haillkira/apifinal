@@ -1,3 +1,4 @@
+using System.Text.RegularExpressions;
 using Inmobiliaria.Application;
 using Inmobiliaria.Application.Persistencia;
 using Inmobiliaria.Contracts;
@@ -7,13 +8,16 @@ using SkiaSharp;
 namespace Inmobiliaria.Api.Controllers;
 
 [ApiController, Route("api/v1")]
-public sealed class ImagenesController(IImagenesRepository imagenes, AccesoService acceso, IWebHostEnvironment entorno, IConfiguration config) : ControllerBase
+public sealed partial class ImagenesController(IImagenesRepository imagenes, AccesoService acceso, IWebHostEnvironment entorno, IConfiguration config) : ControllerBase
 {
     private const long Maximo = 5 * 1024 * 1024;
     private string Carpeta => config["Imagenes:Carpeta"] ?? Path.Combine(entorno.ContentRootPath, "App_Data", "imagenes");
+    [GeneratedRegex(@"\A[a-f0-9]{32}\.jpg\z", RegexOptions.CultureInvariant, 100)]
+    private static partial Regex NombreImagen();
+
     private string Ruta(string nombre)
     {
-        if (!System.Text.RegularExpressions.Regex.IsMatch(nombre, "^[a-f0-9]{32}\\.jpg$")) throw new ArgumentException("Imagen no válida.");
+        if (!NombreImagen().IsMatch(nombre)) throw new ArgumentException("Imagen no válida.");
         return Path.Combine(Carpeta, nombre);
     }
     private async Task<bool> Propia(int id) => await imagenes.EsPropietario(id, await acceso.Vendedor(User));
@@ -21,7 +25,7 @@ public sealed class ImagenesController(IImagenesRepository imagenes, AccesoServi
     [Authorize, HttpGet("propiedades/{id:int}/imagenes")]
     public async Task<IActionResult> Listar(int id) => !await Propia(id) ? NotFound() : Ok(await imagenes.Listar(id));
 
-    [Authorize, HttpPost("propiedades/{id:int}/imagenes"), RequestSizeLimit(43 * 1024 * 1024), RequestFormLimits(MultipartBodyLengthLimit = 43 * 1024 * 1024)]
+    [Authorize, HttpPost("propiedades/{id:int}/imagenes"), RequestSizeLimit(8 * 1024 * 1024), RequestFormLimits(MultipartBodyLengthLimit = 8 * 1024 * 1024)]
     public async Task<IActionResult> Subir(int id, [FromForm] List<IFormFile> archivos)
     {
         var vendedor = await acceso.Vendedor(User);

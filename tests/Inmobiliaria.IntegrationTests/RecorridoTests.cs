@@ -15,6 +15,7 @@ public sealed class RecorridoCollection : ICollectionFixture<ApiSqlFixture> { }
 [Collection("Recorrido")]
 public sealed class RecorridoTests(ApiSqlFixture app)
 {
+    private static readonly string[] EstadosRespondidos = ["Aceptada", "Rechazada"];
     [Fact]
     public async Task RegistroAprobacionPublicacionSolicitud_RecorridoCompletoConAislamientoYConcurrencia()
     {
@@ -73,7 +74,7 @@ public sealed class RecorridoTests(ApiSqlFixture app)
         Assert.Single(decisiones,r => r.StatusCode == HttpStatusCode.Conflict);
         foreach(var response in decisiones) response.Dispose();
         var respondida = Assert.Single((await comprador.GetFromJsonAsync<List<SolicitudDto>>("/api/v1/solicitudes"))!);
-        Assert.Contains(respondida.Estado,new[]{"Aceptada","Rechazada"});
+        Assert.Contains(respondida.Estado,EstadosRespondidos);
         Assert.NotNull(respondida.Respuesta); Assert.NotNull(respondida.FechaRespuesta);
         // Prepara una solicitud aceptada para el siguiente tramo del recorrido.
         await app.ExecuteSql("UPDATE Solicitudes SET EstadoSolicitud='Aceptada' WHERE IdSolicitud=@id",new SqlParameter("@id",respondida.IdSolicitud));
